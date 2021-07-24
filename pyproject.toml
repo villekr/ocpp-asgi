@@ -1,17 +1,32 @@
 [tool.poetry]
 name = "ocpp_asgi"
-version = "0.1.0"
-description = "ocpp-asgi extends ocpp library to provide ASGI compliant interface."
-authors = ["Ville Kärkkäinen <ville.karkkainen@etteplan.com>"]
+version = "0.2.0"
+description = "ocpp-asgi provides ASGI compliant interface for implementing event-driven server-side support for OCPP protocol with Python"
+authors = ["Ville Kärkkäinen <ville.karkkainen@outlook.com>"]
+readme = "README.md"
+homepage = "https://github.com/villekr/ocpp-asgi"
+license = "MIT"
+include = [
+    "LICENSE",
+]
+keywords = ["ocpp", "asgi", "serverless"]
 
 [tool.poetry.dependencies]
-python = "3.8.1"
-ocpp = "^0.8.1"
+python = "^3.8"
+ocpp = "^0.8.3"
 
 [tool.poetry.dev-dependencies]
-websockets = "^8.1"
-uvicorn = "^0.13.4"
-black = "^20.8b1"
+websockets = "9.1"
+aiohttp = "3.7.4"
+uvicorn = "0.14.0"
+black = "21.7b0"
+flake8 = "3.9.2"
+isort = "5.9.2"
+pytest = "6.2.4"
+pytest-cov = "2.12.1"
+
+[tool.isort]
+profile = "black"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

@@ -1,18 +1,18 @@
 from __future__ import annotations
 
-import functools
-from abc import ABC, abstractmethod
-from typing import Callable, Any, Awaitable, Optional
-from enum import Enum
 import asyncio
+import functools
 import inspect
-from dataclasses import dataclass, asdict
 import logging
 import uuid
+from abc import ABC, abstractmethod
+from dataclasses import asdict, dataclass
+from enum import Enum
+from typing import Any, Awaitable, Callable, Optional
 
-from ocpp.charge_point import snake_to_camel_case, camel_to_snake_case, remove_nones
-from ocpp.messages import Call, unpack, validate_payload, MessageType
-from ocpp.exceptions import OCPPError, NotImplementedError
+from ocpp.charge_point import camel_to_snake_case, remove_nones, snake_to_camel_case
+from ocpp.exceptions import NotImplementedError, OCPPError
+from ocpp.messages import Call, MessageType, unpack, validate_payload
 
 log = logging.getLogger("ocpp-asgi")
 
@@ -41,13 +41,6 @@ class Connection(ABC):
         pass
 
 
-@dataclass
-class OCPPAdapter:
-    ocpp_version: str
-    call: Awaitable[Any]
-    call_result: Awaitable[Any]
-
-
 class Subprotocol(str, Enum):
     ocpp16 = "ocpp1.6"
     ocpp20 = "ocpp2.0"
@@ -55,15 +48,24 @@ class Subprotocol(str, Enum):
 
 
 @dataclass
+class OCPPAdapter:
+    ocpp_version: str
+    call: Awaitable[Any]
+    call_result: Awaitable[Any]
+
+
+@dataclass
 class RouterContext:
     """RouterContext class is passed to router."""
 
-    charging_station_id: str
+    scope: dict  # Store ASGI scope dictionary as is
+    body: dict  # Store ASGI content mainly to avoid parsing http event twice
     subprotocol: Subprotocol
-    connection: Connection
     ocpp_adapter: OCPPAdapter
+    send: Callable[[str, bool, RouterContext], Awaitable[None]]
+    charging_station_id: str
     queue: Queue
-    call_lock: Any  # asyncio.Lock()
+    call_lock: Any
 
 
 @dataclass
@@ -71,8 +73,7 @@ class HandlerContext:
     """HandlerContext class instance is passed to handler."""
 
     charging_station_id: str
-
-    # References to RouterContext and Router's call-method added here so that
+    # References to RouterContext and Router added here so that
     # we can send messages to specific Charging Station, which initiated messaging.
     _router_context: RouterContext
     _router: Router
@@ -242,17 +243,17 @@ class Router:
             _router_context=context,
             _router=self,
         )
+        # Convert message to correct Call instance
+        class_ = getattr(context.ocpp_adapter.call, f"{msg.action}Payload")
+        payload = class_(**snake_case_payload)
         try:
-            try:
-                response = handler(message=snake_case_payload, context=handler_context)
-                if inspect.isawaitable(response):
-                    response = await response
-            except Exception as e:
-                log.exception(e)
+            response = handler(payload=payload, context=handler_context)
+            if inspect.isawaitable(response):
+                response = await response
         except Exception as e:
             log.exception("Error while handling request '%s'", msg)
             response = msg.create_call_error(e).to_json()
-            await self._send(response, context)
+            await self._send(message=response, is_response=True, context=context)
 
         temp_response_payload = asdict(response)
 
@@ -272,11 +273,11 @@ class Router:
         if not handlers.get("_skip_schema_validation", False):
             validate_payload(response, ocpp_version)
 
-        await self._send(response.to_json(), context=context)
+        await self._send(message=response.to_json(), is_response=True, context=context)
 
         try:
             handler = handlers["_after_action"]
-            response = handler(message=snake_case_payload, context=handler_context)
+            response = handler(payload=payload, context=handler_context)
             if inspect.isawaitable(response):
                 if self._create_task:
                     # Create task to avoid blocking when making a call
@@ -302,7 +303,7 @@ class Router:
 
         validate_payload(call, ocpp_version)
 
-        await self._send(call.to_json(), context=context)
+        await self._send(message=call.to_json(), is_response=False, context=context)
         self.subscriptions[call.unique_id] = context.queue
         try:
             response = await asyncio.wait_for(
@@ -324,6 +325,6 @@ class Router:
         cls = getattr(call_result, message.__class__.__name__)
         return cls(**snake_case_payload)
 
-    async def _send(self, message: str, context: RouterContext):
-        log.info(f"{context.charging_station_id}: send {message}")
-        await context.connection.send(message)
+    async def _send(self, *, message: str, is_response: bool, context: RouterContext):
+        log.debug(f"{context.charging_station_id=} {message=}")
+        await context.send(message=message, is_response=is_response, context=context)
