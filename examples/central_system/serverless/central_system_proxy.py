@@ -2,13 +2,11 @@ import asyncio
 import json
 from typing import Dict
 
-from aiohttp import ClientSession
 import websockets
-from aiohttp import web
-from ocpp.messages import MessageType
+from aiohttp import ClientSession, web
 from websockets import WebSocketServerProtocol
 
-from ocpp_asgi.app import create_call_error
+from ocpp_asgi.utils import create_call_error
 
 routes = web.RouteTableDef()
 

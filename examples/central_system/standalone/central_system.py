@@ -1,5 +1,3 @@
-import uvicorn
-
 from examples.central_system.routers.v16.provisioning_router import (
     router as v16_provisioning_router,
 )
@@ -34,6 +32,8 @@ class CentralSystem(ASGIApplication):
 
 
 if __name__ == "__main__":
+    import uvicorn
+
     central_system = CentralSystem()
     central_system.include_router(v16_provisioning_router)
     central_system.include_router(v201_provisioning_router)

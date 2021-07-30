@@ -1,3 +1,17 @@
+<p align="center">
+<a href="https://github.com/villekr/ocpp-asgi/actions?query=workflow%3Amain" target="_blank">
+    <img src="https://github.com/villekr/ocpp-asgi/workflows/main/badge.svg" alt="main">
+</a>
+<a href="https://codecov.io/gh/villekr/ocpp-asgi">
+  <img src="https://codecov.io/gh/villekr/ocpp-asgi/branch/main/graph/badge.svg?token=DZ2QWVF3DX"/>
+</a>
+<a href="https://pypi.org/project/ocpp-asgi" target="_blank">
+    <img src="https://img.shields.io/pypi/v/ocpp-asgi?color=%2334D058&label=pypi%20package" alt="Package version">
+</a>
+</p>
+
+---
+
 # OCPP-ASGI
 
 ocpp-asgi provides **ASGI compliant** interface for implementing **event-driven** **server-side** support for OCPP protocol with Python. It depends on and extends [mobilityhouse/ocpp](https://github.com/mobilityhouse/ocpp). 

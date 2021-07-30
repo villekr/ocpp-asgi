@@ -3,7 +3,7 @@ import json
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, List
 
-from ocpp.messages import Call, CallError, MessageType, unpack
+from ocpp.messages import MessageType
 from ocpp.v16 import call as v16_call
 from ocpp.v16 import call_result as v16_call_result
 from ocpp.v20 import call as v20_call
@@ -23,22 +23,7 @@ from ocpp_asgi.asgi import (
     Send,
 )
 from ocpp_asgi.logging import log
-from ocpp_asgi.router import Connection, OCPPAdapter, Router, RouterContext, Subprotocol
-
-
-def create_call_error(message: str) -> str:
-    """Create CallError serialized representation based on message.
-
-    Raises ValueError if message is not type Call. CallResult and CallError
-    don't require response.
-    """
-    call: Call = unpack(message)
-    if isinstance(call, Call):
-        call_error: CallError = call.create_call_error(None)
-        return call_error.to_json()
-    else:
-        raise ValueError("message is not type Call")
-
+from ocpp_asgi.router import OCPPAdapter, Router, RouterContext, Subprotocol
 
 ocpp_adapters = {
     Subprotocol.ocpp201.value: OCPPAdapter(
@@ -51,20 +36,6 @@ ocpp_adapters = {
         call=v16_call, call_result=v16_call_result, ocpp_version="1.6"
     ),
 }
-
-
-class ASGIConnection(Connection):
-    """Connection for sending and receiving messages."""
-
-    def __init__(self, send: Send, receive: Receive):
-        self._send = send
-        # self._receive is not set as receive happens via ASGI interface
-
-    async def send(self, message: str):
-        await self._send({"type": ASGIWebSocketEvent.send, "text": message})
-
-    async def recv(self) -> str:
-        raise ValueError
 
 
 @dataclass
@@ -116,7 +87,7 @@ class ASGIApplication:
     def include_router(self, router: Router):
         self.routers[router.subprotocol] = router
 
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+    async def __call__(self, scope: Scope, receive: Receive, send: Send):
         """ASGI signature handler.
 
         Args:
@@ -124,10 +95,11 @@ class ASGIApplication:
             receive (Receive): ASGI handle for receiving messages
             send (Send): ASGI handle for sending messages
         """
-        if scope["type"] == ASGIScope.lifespan:
-            await self.lifespan_handler(scope, receive, send)
-        elif scope["type"] in [ASGIScope.websocket, ASGIScope.http]:
+
+        if scope["type"] in [ASGIScope.websocket, ASGIScope.http]:
             await self.handler(scope, receive, send)
+        elif scope["type"] == ASGIScope.lifespan:
+            await self.lifespan_handler(scope, receive, send)
         else:
             raise ValueError(f'Unsupported ASGI scope type: {scope["type"]}')
 
@@ -148,17 +120,19 @@ class ASGIApplication:
             except Exception:
                 await send({"type", ASGILifeSpanShutDown.failed.value})
 
-    async def handler(self, scope: Scope, receive: Receive, send: Send) -> None:
+    async def handler(self, scope: Scope, receive: Receive, send: Send):
         log.debug(f"{scope=}")
-        connection = True
-        while connection:
+        while True:
             event = await receive()
             log.debug(f"{event=}")
             context: RouterContext = self._create_context(
-                scope=scope, event=event, receive=receive, send=send
+                scope=scope, event=event, send=send
             )
+
             # WebSocket
-            if event["type"] == ASGIWebSocketEvent.connect:
+            if event["type"] == ASGIWebSocketEvent.receive:
+                await self.on_receive(message=context.body, context=context)
+            elif event["type"] == ASGIWebSocketEvent.connect:
                 response = await self.on_connect(context)
                 if response:
                     await send({"type": "websocket.accept"})
@@ -170,14 +144,10 @@ class ASGIApplication:
                     subprotocol=context.subprotocol,
                     code=event["code"],
                 )
-                connection = False
-            if event["type"] == ASGIWebSocketEvent.receive:
-                print(f"-> WEBSOCKET: handler {context.body}")
-                await self.on_receive(message=context.body, context=context)
+                break
 
             # HTTP
             elif event["type"] == ASGIHTTPEvent.request:
-                print(f"-> HTTP: handler {context.body}")
                 # TODO: handle more_body case
                 message_type = int(context.body[1])
                 if message_type != MessageType.Call:
@@ -189,9 +159,8 @@ class ASGIApplication:
                     )
                     await send({"type": ASGIHTTPEvent.response_body.value})
                 await self.on_receive(message=context.body, context=context)
-
             elif event["type"] == ASGIHTTPEvent.disconnect.value:
-                connection = False
+                break
 
     async def on_receive(self, *, message: str, context: RouterContext):
         router: Router = self.routers[context.subprotocol]
@@ -243,7 +212,7 @@ class ASGIApplication:
     # Private
 
     def _create_context(
-        self, *, scope: Scope, event: dict, receive: Receive, send: Send
+        self, *, scope: Scope, event: dict, send: Send
     ) -> RouterContext:
         queue = asyncio.Queue()
         call_lock = asyncio.Lock()

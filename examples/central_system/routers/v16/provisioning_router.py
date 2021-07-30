@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from ocpp.v16 import call, call_result
-from ocpp.v16.enums import Action, RegistrationStatus
+from ocpp.v16.enums import Action, AuthorizationStatus, RegistrationStatus
 
 from ocpp_asgi.router import HandlerContext, Router, Subprotocol
 
@@ -30,3 +30,14 @@ async def after_boot_notification(
     print(f"(Central System) after_boot_notification Charging Station {id=}")
     response = await context.send(call.GetLocalListVersionPayload())
     print(f"(Central System) Charging Station {id=} {response=}")
+
+
+@router.on(Action.Authorize)
+async def on_authorize(
+    *, payload: call.AuthorizePayload, context: HandlerContext
+) -> call_result.AuthorizePayload:
+    print(f"(Central System) on_authorize Charging Station {id=}")
+    response = call_result.AuthorizePayload(
+        id_tag_info={"status": AuthorizationStatus.accepted}
+    )
+    return response
