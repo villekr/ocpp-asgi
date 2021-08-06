@@ -5,7 +5,6 @@ import functools
 import inspect
 import logging
 import uuid
-from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass
 from enum import Enum
 from typing import Any, Awaitable, Callable, Optional
@@ -17,30 +16,6 @@ from ocpp.messages import Call, MessageType, unpack, validate_payload
 log = logging.getLogger("ocpp-asgi")
 
 
-class Queue(ABC):
-    """Queue interface for routing incoming CallResult/CallError."""
-
-    @abstractmethod
-    async def get(self) -> str:
-        pass
-
-    @abstractmethod
-    def put_nowait(self, msg):
-        pass
-
-
-class Connection(ABC):
-    """Connection interface for sending and receiving messages."""
-
-    @abstractmethod
-    async def send(self, message: str):
-        pass
-
-    @abstractmethod
-    async def recv(self) -> str:
-        pass
-
-
 class Subprotocol(str, Enum):
     ocpp16 = "ocpp1.6"
     ocpp20 = "ocpp2.0"
@@ -49,6 +24,8 @@ class Subprotocol(str, Enum):
 
 @dataclass
 class OCPPAdapter:
+    """OCPPAdapter encapsulates OCPP version specific call and call_result methods."""
+
     ocpp_version: str
     call: Awaitable[Any]
     call_result: Awaitable[Any]
@@ -56,7 +33,7 @@ class OCPPAdapter:
 
 @dataclass
 class RouterContext:
-    """RouterContext class is passed to router."""
+    """RouterContext instance is passed to router."""
 
     scope: dict  # Store ASGI scope dictionary as is
     body: dict  # Store ASGI content mainly to avoid parsing http event twice
@@ -64,13 +41,13 @@ class RouterContext:
     ocpp_adapter: OCPPAdapter
     send: Callable[[str, bool, RouterContext], Awaitable[None]]
     charging_station_id: str
-    queue: Queue
+    queue: Any
     call_lock: Any
 
 
 @dataclass
 class HandlerContext:
-    """HandlerContext class instance is passed to handler."""
+    """HandlerContext instance is passed to handler."""
 
     charging_station_id: str
     # References to RouterContext and Router added here so that
@@ -88,7 +65,8 @@ class HandlerContext:
             )
 
 
-def subprotocol_to_ocpp_version(subprotocol: str):
+def subprotocol_to_ocpp_version(subprotocol: str) -> str:
+    """Strip away ocpp prefix from"""
     return subprotocol[4:]
 
 
