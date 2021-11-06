@@ -19,10 +19,16 @@ ocpp-asgi provides **ASGI compliant** interface for implementing **event-driven*
 The key features are:
 * ASGI compliant interface supporting both WebSocket and HTTP protocols.
 * Event-driven and "stateless" approach for implementing action handlers for OCPP messages. 
-* Highly-scalable and supports serverless (e.g. AWS Lambda) with compatible ASGI server.
+* Highly-scalable and supports serverless (e.g. AWS Lambda, Azure Functions) with compatible ASGI server.
 * Requires small and straightforward changes from ocpp to action handlers (but is not backwards compatible).
 
-Disclaimer! This library is still in alpha state. It has some rough edges.
+Read the [blog post](https://ville-karkkainen.medium.com/towards-event-based-serverless-ocpp-backend-system-part-i-motivation-and-architecture-options-5d51ba09dfd6) about the motivation behind creating this library.
+
+## Disclaimer!
+
+This library is still in alpha state. At the moment I don't have time nor immediate business need to invest in further development. However, I'm happy to discuss and help if you are considering the benefits of using this library in you project.
+
+Please send [email](mailto:ville.karkkainen@outlook.com) if you have any questions about this library or have some business inquiries in mind.
 
 # Getting started
 
