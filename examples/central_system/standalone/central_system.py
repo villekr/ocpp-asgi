@@ -1,3 +1,7 @@
+import random
+
+import uvicorn
+
 from examples.central_system.routers.v16.provisioning_router import (
     router as v16_provisioning_router,
 )
@@ -10,8 +14,12 @@ from ocpp_asgi.app import ASGIApplication, RouterContext, Subprotocol
 class CentralSystem(ASGIApplication):
     """Central System is collection of routers."""
 
+    def __init__(self):
+        self.id = random.randint(1, 1000)
+        super().__init__()
+
     async def on_startup(self):
-        print("(CentralSystem) Startup.")
+        print(f"(CentralSystem) Startup {self.id}.")
 
     async def on_shutdown(self):
         print("(CentralSystem) Shutdown.")
@@ -31,12 +39,19 @@ class CentralSystem(ASGIApplication):
         )
 
 
-if __name__ == "__main__":
-    import uvicorn
+central_system = CentralSystem()
+central_system.include_router(v16_provisioning_router)
+central_system.include_router(v201_provisioning_router)
 
-    central_system = CentralSystem()
-    central_system.include_router(v16_provisioning_router)
-    central_system.include_router(v201_provisioning_router)
+
+if __name__ == "__main__":
     subprotocols = f"{Subprotocol.ocpp201}, {Subprotocol.ocpp16}"
     headers = [("Sec-WebSocket-Protocol", subprotocols)]
-    uvicorn.run(central_system, host="0.0.0.0", port=9000, headers=headers)
+    uvicorn.run(
+        "central_system:central_system",
+        host="0.0.0.0",
+        port=9000,
+        headers=headers,
+        reload=True,
+        workers=10,
+    )

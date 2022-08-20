@@ -1,4 +1,5 @@
 import asyncio
+import random
 from base64 import b64encode
 
 import ocpp.v16.enums as ocpp_v16_enums
@@ -79,8 +80,14 @@ class ChargingStation201(CP201):
 
 async def main():
     await asyncio.gather(
-        connect(charging_station_id="111", subprotocol=Subprotocol.ocpp16),
-        connect(charging_station_id="222", subprotocol=Subprotocol.ocpp201),
+        connect(
+            charging_station_id=f"{random.randint(1, 1000)}",
+            subprotocol=Subprotocol.ocpp16,
+        ),
+        connect(
+            charging_station_id=f"{random.randint(1, 1000)}",
+            subprotocol=Subprotocol.ocpp201,
+        ),
     )
 
 
