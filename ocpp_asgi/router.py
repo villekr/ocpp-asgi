@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import functools
 import inspect
-import logging
 import uuid
 from dataclasses import asdict, dataclass
 from enum import Enum
@@ -13,7 +12,7 @@ from ocpp.charge_point import camel_to_snake_case, remove_nones, snake_to_camel_
 from ocpp.exceptions import NotImplementedError, OCPPError
 from ocpp.messages import Call, MessageType, unpack, validate_payload
 
-log = logging.getLogger("ocpp-asgi")
+from ocpp_asgi.logging import log
 
 
 class Subprotocol(str, Enum):

@@ -170,7 +170,11 @@ class ASGIApplication:
 
     async def on_receive(self, *, message: str, context: RouterContext):
         router: Router = self.routers[context.subprotocol]
-        await router.route_message(message=message, context=context)
+        try:
+            await router.route_message(message=message, context=context)
+        except Exception as e:
+            log.error(f"Failure when processing message on_receive: {e=}")
+            pass
 
     # Handlers to override in subclass
 

@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime
 
 from ocpp.v16 import call, call_result
@@ -15,6 +16,7 @@ async def on_boot_notification(
     id = context.charging_station_id
     print(f"(Central System) on_boot_notification Charging Station {id=}")
     # Do something with the payload...
+    await asyncio.sleep(10)  # Add some artificial delay before sending response
     return call_result.BootNotificationPayload(
         current_time=datetime.utcnow().isoformat(),
         interval=10,

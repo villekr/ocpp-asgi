@@ -65,8 +65,16 @@ class CentralSystem(ASGIApplication):
             router = self.routers[context.subprotocol]
         else:
             raise ValueError(f"Unknown sub-protocol value: {context.subprotocol=}")
-        response = await router.call(message=message, context=context)
-        print(f"(Central System) Charging Station {id=} {response=}")
+        try:
+            response = await router.call(message=message, context=context)
+            print(
+                f"(Central System) Charging Station {context.charging_station_id} {response=}"  # noqa: E501
+            )
+        except Exception as e:
+            print(
+                f"(Central System) Failure sending message to Charging Station {context.charging_station_id} {e=}"  # noqa: E501
+            )
+            pass
 
 
 if __name__ == "__main__":
