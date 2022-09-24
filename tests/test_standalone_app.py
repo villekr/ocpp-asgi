@@ -2,6 +2,7 @@ from dataclasses import asdict
 from typing import Any
 from uuid import uuid4
 
+import ocpp.v16.call as call
 import ocpp.v16.call_result as call_result
 import pytest
 from asgi_tools.tests import ASGITestClient
@@ -26,12 +27,15 @@ def payload_to_message(payload: Any) -> str:
     return msg
 
 
-def message_to_payload(message: str, action: str) -> Any:
+def message_to_payload(message: str, action: str, is_call_result: bool = True) -> Any:
     response = unpack(message)
     response.action = action
     validate_payload(response, "1.6")
     snake_case_payload = camel_to_snake_case(response.payload)
-    cls = getattr(call_result, f"{action}Payload")
+    if is_call_result:
+        cls = getattr(call_result, f"{action}Payload")
+    else:
+        cls = getattr(call, f"{action}Payload")
     payload = cls(**snake_case_payload)
     return payload
 
@@ -53,3 +57,9 @@ async def test_standalone_app(standalone_app):
         msg = await ws.receive()
         response = message_to_payload(message=msg, action="Authorize")
         assert type(response) == call_result.AuthorizePayload
+
+        msg = await ws.receive()
+        request = message_to_payload(
+            message=msg, action="RemoteStartTransaction", is_call_result=False
+        )
+        assert type(request) == call.RemoteStartTransactionPayload

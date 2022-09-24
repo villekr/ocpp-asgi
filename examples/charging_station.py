@@ -55,6 +55,16 @@ class ChargingStation16(CP16):
         print(f"(Charging Station) {self.id=} -> {response=}")
         return response
 
+    @on(ocpp_v16_enums.Action.RemoteStartTransaction)
+    async def on_remote_start_transaction(self, **kwargs):
+        request = call16.RemoteStartTransactionPayload(**kwargs)
+        print(f"(Charging Station) {self.id=} <- {request=}")
+        response = call_result16.RemoteStartTransactionPayload(
+            status=ocpp_v16_enums.RemoteStartStopStatus.accepted.value
+        )
+        print(f"(Charging Station) {self.id=} -> {response=}")
+        return response
+
 
 class ChargingStation201(CP201):
     """Example charging station using ocpp 2.0.1 protocol."""
@@ -73,6 +83,16 @@ class ChargingStation201(CP201):
         request = call201.GetLocalListVersionPayload(**kwargs)
         print(f"(Charging Station) {self.id=} <- {request=}")
         response = call_result201.GetLocalListVersionPayload(version_number=0)
+        print(f"(Charging Station) {self.id=} -> {response=}")
+        return response
+
+    @on(ocpp_v201_enums.Action.RequestStartTransaction)
+    async def on_remote_start_transaction(self, **kwargs):
+        request = call201.RequestStartTransactionPayload(**kwargs)
+        print(f"(Charging Station) {self.id=} <- {request=}")
+        response = call_result201.RequestStartTransactionPayload(
+            status=ocpp_v201_enums.RequestStartStopStatusType.accepted.value
+        )
         print(f"(Charging Station) {self.id=} -> {response=}")
         return response
 
