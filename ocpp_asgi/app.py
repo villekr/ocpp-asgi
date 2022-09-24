@@ -82,7 +82,7 @@ class ASGIApplication:
     """ASGI Application to handle event based message routing."""
 
     def __init__(self):
-        self.routers = {}
+        self.routers: Router = {}
 
     def include_router(self, router: Router):
         self.routers[router.subprotocol] = router

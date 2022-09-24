@@ -1,3 +1,9 @@
+import asyncio
+
+from ocpp.v16 import call as call16
+from ocpp.v20 import call as call20
+from ocpp.v201 import call as call201
+
 from examples.central_system.routers.v16.provisioning_router import (
     router as v16_provisioning_router,
 )
@@ -20,8 +26,15 @@ class CentralSystem(ASGIApplication):
         print(
             f"(CentralSystem) Charging Station id: {context.charging_station_id} subprotocol: {context.subprotocol} connected."  # noqa: E501
         )
-        # You can inspect context.scope["headers"] and perform eg. basic authentication
-        return True
+        # You can inspect context.scope["headers"] and perform e.g. basic authentication
+        allow_connection = True
+
+        if allow_connection:
+            # Create task for running any logic that happens during connection setup
+            # The reasoning is that response from on_connect is quick and then allows
+            # processing to continue in central system
+            asyncio.create_task(self.after_on_connect(context))
+        return allow_connection
 
     async def on_disconnect(
         self, *, charging_station_id: str, subprotocol: Subprotocol, code: int
@@ -29,6 +42,31 @@ class CentralSystem(ASGIApplication):
         print(
             f"(CentralSystem) Charging Station id: {charging_station_id} subprotocol: {subprotocol} disconnected. Reason code: {code}"  # noqa: E501
         )
+
+    async def after_on_connect(self, context: RouterContext):
+        # Example on how to send message to Charging Station e.g. after connection setup
+        # Note! This is just an example, and it's not recommended to tie communication
+        # towards Charging Station is on_connect event like this.
+        await asyncio.sleep(1)  # Give Charging Station some time once connected
+        if context.subprotocol == Subprotocol.ocpp16.value:
+            message = call16.RemoteStartTransactionPayload(id_tag="abc")
+            router = self.routers[context.subprotocol]
+        elif context.subprotocol == Subprotocol.ocpp20.value:
+            id_token = {"idToken": "abc", "type": "Central"}
+            message = call20.RequestStartTransactionPayload(
+                id_token=id_token, remote_start_id=123
+            )
+            router = self.routers[context.subprotocol]
+        elif context.subprotocol == Subprotocol.ocpp201.value:
+            id_token = {"idToken": "abc", "type": "Central"}
+            message = call201.RequestStartTransactionPayload(
+                id_token=id_token, remote_start_id=123
+            )
+            router = self.routers[context.subprotocol]
+        else:
+            raise ValueError(f"Unknown sub-protocol value: {context.subprotocol=}")
+        response = await router.call(message=message, context=context)
+        print(f"(Central System) Charging Station {id=} {response=}")
 
 
 if __name__ == "__main__":
