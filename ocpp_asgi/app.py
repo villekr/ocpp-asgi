@@ -148,6 +148,12 @@ class ASGIApplication:
 
             # HTTP
             elif event["type"] == ASGIHTTPEvent.request:
+                if context is None:
+                    await send(
+                        {"type": ASGIHTTPEvent.response_start.value, "status": 400}
+                    )
+                    await send({"type": ASGIHTTPEvent.response_body.value})
+                    break
                 # TODO: handle more_body case
                 message_type = int(context.body[1])
                 if message_type != MessageType.Call:
@@ -213,9 +219,10 @@ class ASGIApplication:
 
     def _create_context(
         self, *, scope: Scope, event: dict, send: Send
-    ) -> RouterContext:
+    ) -> RouterContext or None:
         queue = asyncio.Queue()
         call_lock = asyncio.Lock()
+        subprotocols: list[str] = []
         if scope["type"] == ASGIScope.websocket:
             charging_station_id = scope["path"].strip("/")
             subprotocols = scope["subprotocols"]
@@ -224,11 +231,15 @@ class ASGIApplication:
             if event["type"] == ASGIHTTPEvent.disconnect:
                 # Don't bother creating context for disconnect as it's not used
                 return None
-            http_event = json.loads(event["body"])
-            http_event_context: HTTPEventContext = self.http_parse_event(http_event)
-            charging_station_id = http_event_context.charging_station_id
-            subprotocols = http_event_context.subprotocols
-            body = http_event_context.body
+            if len(event["body"]) > 0:
+                http_event = json.loads(event["body"])
+                http_event_context: HTTPEventContext = self.http_parse_event(http_event)
+                charging_station_id = http_event_context.charging_station_id
+                subprotocols = http_event_context.subprotocols
+                body = http_event_context.body
+
+        if len(subprotocols) == 0:
+            return None
 
         # Pick the highest matching subprotocol
         if Subprotocol.ocpp201 in subprotocols:
