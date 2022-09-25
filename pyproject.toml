@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ocpp_asgi"
-version = "0.2.0"
+version = "0.3.0"
 description = "ocpp-asgi provides ASGI compliant interface for implementing event-driven server-side support for OCPP protocol with Python"
 authors = ["Ville Kärkkäinen <ville.karkkainen@outlook.com>"]
 readme = "README.md"
