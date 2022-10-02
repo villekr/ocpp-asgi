@@ -98,10 +98,13 @@ class ChargingStation201(CP201):
 
 
 async def main():
-    await asyncio.gather(
-        connect(charging_station_id="111", subprotocol=Subprotocol.ocpp16),
-        connect(charging_station_id="222", subprotocol=Subprotocol.ocpp201),
-    )
+    coroutines = []
+    for index in range(20):
+        subprotocol = Subprotocol.ocpp16 if index % 2 == 0 else Subprotocol.ocpp201
+        coroutines.append(
+            connect(charging_station_id=f"{index}", subprotocol=subprotocol)
+        )
+    await asyncio.gather(*coroutines)
 
 
 if __name__ == "__main__":

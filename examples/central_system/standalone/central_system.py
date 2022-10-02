@@ -44,12 +44,24 @@ class CentralSystem(ASGIApplication):
         pass
 
 
+central_system = CentralSystem()
+central_system.include_router(v16_provisioning_router)
+central_system.include_router(v201_provisioning_router)
+
 if __name__ == "__main__":
     import uvicorn
 
-    central_system = CentralSystem()
-    central_system.include_router(v16_provisioning_router)
-    central_system.include_router(v201_provisioning_router)
     subprotocols = f"{Subprotocol.ocpp201}, {Subprotocol.ocpp16}"
     headers = [("Sec-WebSocket-Protocol", subprotocols)]
-    uvicorn.run(central_system, host="0.0.0.0", port=9000, headers=headers)
+    uvicorn.run(
+        "central_system:central_system",
+        host="0.0.0.0",
+        port=9000,
+        headers=headers,
+        workers=10,
+        ws_ping_interval=None,
+        ws_ping_timeout=None,
+        use_colors=True,
+        log_level="info",
+        timeout_keep_alive=30,
+    )
