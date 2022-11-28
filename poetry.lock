@@ -48,7 +48,7 @@ build = ["bump2version", "wheel"]
 docs = ["sphinx", "pydata-sphinx-theme"]
 examples = ["uvicorn", "websockets", "jinja2", "httpx"]
 orjson = ["orjson"]
-tests = ["aiofile", "pytest", "pytest-aio[trio,curio] (>=1.1.0)", "pytest-benchmark", "pyyaml", "pytest-mypy", "uvloop"]
+tests = ["aiofile", "pytest", "pytest-aio[curio,trio] (>=1.1.0)", "pytest-benchmark", "pyyaml", "pytest-mypy", "uvloop"]
 ujson = ["ujson"]
 
 [[package]]
