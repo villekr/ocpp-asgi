@@ -1,7 +1,7 @@
 import asyncio
 import json
 from dataclasses import dataclass
-from typing import Any, Awaitable, Callable, List
+from typing import Any, Awaitable, Callable, List, TypedDict
 
 from ocpp.messages import MessageType
 from ocpp.v16 import call as v16_call
@@ -82,7 +82,7 @@ class ASGIApplication:
     """ASGI Application to handle event based message routing."""
 
     def __init__(self):
-        self.routers: Router = {}
+        self.routers: TypedDict[Subprotocol, Router] = {}
 
     def include_router(self, router: Router):
         self.routers[router.subprotocol] = router
@@ -135,7 +135,9 @@ class ASGIApplication:
             elif event["type"] == ASGIWebSocketEvent.connect:
                 response = await self.on_connect(context)
                 if response:
-                    await send({"type": "websocket.accept"})
+                    await send(
+                        {"type": "websocket.accept", "subprotocol": context.subprotocol}
+                    )
                 else:
                     await send({"type": "websocket.reject"})
             elif event["type"] == ASGIWebSocketEvent.disconnect:
