@@ -1,6 +1,6 @@
-import asyncio
 from datetime import datetime
 
+from loguru import logger
 from ocpp.v16 import call, call_result
 from ocpp.v16.enums import Action, AuthorizationStatus, RegistrationStatus
 
@@ -14,9 +14,8 @@ async def on_boot_notification(
     *, payload: call.BootNotificationPayload, context: HandlerContext
 ) -> call_result.BootNotificationPayload:
     id = context.charging_station_id
-    print(f"(Central System) on_boot_notification Charging Station {id=}")
+    logger.debug(f"(Central System) on_boot_notification Charging Station {id=}")
     # Do something with the payload...
-    await asyncio.sleep(10)  # Add some artificial delay before sending response
     return call_result.BootNotificationPayload(
         current_time=datetime.utcnow().isoformat(),
         interval=10,
@@ -29,16 +28,16 @@ async def after_boot_notification(
     *, payload: call.BootNotificationPayload, context: HandlerContext
 ):
     id = context.charging_station_id
-    print(f"(Central System) after_boot_notification Charging Station {id=}")
+    logger.debug(f"(Central System) after_boot_notification Charging Station {id=}")
     response = await context.send(call.GetLocalListVersionPayload())
-    print(f"(Central System) Charging Station {id=} {response=}")
+    logger.debug(f"(Central System) Charging Station {id=} {response=}")
 
 
 @router.on(Action.Authorize)
 async def on_authorize(
     *, payload: call.AuthorizePayload, context: HandlerContext
 ) -> call_result.AuthorizePayload:
-    print(f"(Central System) on_authorize Charging Station {id=}")
+    logger.debug(f"(Central System) on_authorize Charging Station {id=}")
     response = call_result.AuthorizePayload(
         id_tag_info={"status": AuthorizationStatus.accepted}
     )

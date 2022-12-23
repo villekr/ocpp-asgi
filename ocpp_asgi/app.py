@@ -1,6 +1,7 @@
 import asyncio
 import json
 from dataclasses import dataclass
+from enum import Enum
 from typing import Any, Awaitable, Callable, List, TypedDict
 
 from ocpp.messages import MessageType
@@ -25,15 +26,24 @@ from ocpp_asgi.asgi import (
 from ocpp_asgi.logging import log
 from ocpp_asgi.router import OCPPAdapter, Router, RouterContext, Subprotocol
 
+
+class OCPPVersion(str, Enum):
+    v1_6 = "1.6"
+    v2_0 = "2.0"
+    v2_0_1 = "2.0.1"
+
+
 ocpp_adapters = {
     Subprotocol.ocpp201.value: OCPPAdapter(
-        call=v201_call, call_result=v201_call_result, ocpp_version="2.0.1"
+        call=v201_call,
+        call_result=v201_call_result,
+        ocpp_version=OCPPVersion.v2_0_1.value,
     ),
     Subprotocol.ocpp20.value: OCPPAdapter(
-        call=v20_call, call_result=v20_call_result, ocpp_version="2.0"
+        call=v20_call, call_result=v20_call_result, ocpp_version=OCPPVersion.v2_0.value
     ),
     Subprotocol.ocpp16.value: OCPPAdapter(
-        call=v16_call, call_result=v16_call_result, ocpp_version="1.6"
+        call=v16_call, call_result=v16_call_result, ocpp_version=OCPPVersion.v1_6.value
     ),
 }
 
@@ -128,9 +138,16 @@ class ASGIApplication:
             context: RouterContext = self._create_context(
                 scope=scope, event=event, send=send
             )
-
             # WebSocket
             if event["type"] == ASGIWebSocketEvent.receive:
+                # Offer "CallResult" and "CallError" to client api handler
+                message_type = int(context.body[1])
+                if message_type != MessageType.Call:
+                    event = await self.consume_event(
+                        connection_id=context.charging_station_id, message=context.body
+                    )
+                    if event is None:
+                        continue
                 await self.on_receive(message=context.body, context=context)
             elif event["type"] == ASGIWebSocketEvent.connect:
                 response = await self.on_connect(context)
@@ -146,7 +163,7 @@ class ASGIApplication:
                     subprotocol=context.subprotocol,
                     code=event["code"],
                 )
-                break
+                # break
 
             # HTTP
             elif event["type"] == ASGIHTTPEvent.request:
@@ -159,6 +176,10 @@ class ASGIApplication:
                 # TODO: handle more_body case
                 message_type = int(context.body[1])
                 if message_type != MessageType.Call:
+                    # Offer "CallResult" and "CallError" to client api handler
+                    event = await self.consume_event(
+                        connection_id=context.charging_station_id, message=context.body
+                    )
                     # For "CallResult" and "CallError" send empty response back
                     # as ocpp protocol doesn't mandate response for these message types
                     # For "Call" response will be sent by router
@@ -166,6 +187,8 @@ class ASGIApplication:
                         {"type": ASGIHTTPEvent.response_start.value, "status": 200}
                     )
                     await send({"type": ASGIHTTPEvent.response_body.value})
+                    if event is None:
+                        continue
                 await self.on_receive(message=context.body, context=context)
             elif event["type"] == ASGIHTTPEvent.disconnect.value:
                 break
@@ -220,6 +243,17 @@ class ASGIApplication:
         This is application specific adaptation how this sending is done.
         """
         raise NotImplementedError
+
+    async def consume_event(self, *, connection_id: str, message: str) -> str or None:
+        """Consume event and short-circuit asgi application event handling.
+
+        Relevant only for HTTP central system.
+
+        HTTP backend may consume event in case of it's a response sent from client api.
+        In this case event is not delivered to router handler.
+        @return None is event was consumed, original event otherwise.
+        """
+        return message
 
     # Private
 
