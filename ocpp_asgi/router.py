@@ -117,10 +117,13 @@ class Router:
 
         # Use asyncio.create_task for "after"-handler.
         self._create_task = create_task
-        self._response_queue = asyncio.Queue()
+        self._response_queue = asyncio.Queue()  # TODO: Rework for serverless scenario
 
         # Dictionary for storing subscribers for, which are waiting for CallResult or
         # CallErrors.
+        # TODO: This approach doesn't work in serverless cloud scenario as response will
+        # not be delivered to same handler instance (i.e. Lambda) which originated the
+        # request. A different high performance PubSub is needed.
         self.subscriptions = {}
 
     def on(self, action, *, skip_schema_validation=False):
@@ -138,6 +141,8 @@ class Router:
 
         return decorator
 
+    # TODO: after-handler in this form doesn't work in serverless cloud scenario
+    # Different kind of approach is needed.
     def after(self, action):
         def decorator(func):
             @functools.wraps(func)

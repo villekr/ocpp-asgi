@@ -7,7 +7,7 @@ from ocpp_asgi.router import Subprotocol
 
 async def main():
     await asyncio.gather(
-        connect(charging_station_id="4", subprotocol=Subprotocol.ocpp16),
+        connect(charging_station_id="4", subprotocol=Subprotocol.ocpp201),
     )
 
 
